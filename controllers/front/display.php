@@ -183,6 +183,6 @@ class  yamoshiandroidDisplayModuleFrontController extends AndroidBaseController
 
     public function addcartRoute()
     {
-        return "daasd";
+        return new Cart(1);
     }
 }
