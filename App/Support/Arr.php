@@ -10,6 +10,10 @@ class Arr
 {
     use AndroidMacroable;
 
+    public static function query($array)
+    {
+        return http_build_query($array, null, '&', PHP_QUERY_RFC3986);
+    }
     /**
      * Determine whether the given value is array accessible.
      *

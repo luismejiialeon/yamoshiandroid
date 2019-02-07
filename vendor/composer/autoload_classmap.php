@@ -6,4 +6,13 @@ $vendorDir = dirname(dirname(__FILE__));
 $baseDir = dirname($vendorDir);
 
 return array(
+    'ANController' => $baseDir . '/classes/ANController.php',
+    'AndroidBaseController' => $baseDir . '/classes/AndroidBaseController.php',
+    'AndroidBaseModule' => $baseDir . '/classes/AndroidBaseModule.php',
+    'AndroidCategory' => $baseDir . '/models/AndroidCategory.php',
+    'AndroidHttp\\ProductsANController' => $baseDir . '/classes/Http/CategoryANController.php',
+    'AndroidSlider' => $baseDir . '/models/AndroidSlider.php',
+    'RouterTrait' => $baseDir . '/traits/RouterTrait.php',
+    'TraitDBCategoriesAndroid' => $baseDir . '/traits/TraitDBCategoriesAndroid.php',
+    'TraitDBSliderAndroid' => $baseDir . '/traits/TraitDBSliderAndroid.php',
 );

@@ -3,6 +3,8 @@
  * @author Zoltan Szanto <mrbig00@gmail.com>
  */
 
+use App\Android\AndroidResponse;
+
 
 /**
  * A base controller which is meant to be extended to serve the right pages for the react generated urls
@@ -16,6 +18,10 @@ abstract class AndroidBaseController extends ModuleFrontController
     protected $method_http;
     protected $route;
     protected $exclude_maintenance = array();
+    /**
+     * @var \App\Support\Collection
+     */
+    protected $registersrouter;
 
     public function __construct()
     {
@@ -42,9 +48,23 @@ abstract class AndroidBaseController extends ModuleFrontController
         } else {
             $this->wsKey = null;
         }
-        $this->route = self::__makeRoute();
+        $this->route = self:: buildRoute();
+        $this->registersrouter = collect(routes_registrados());
         $this->__verifyAuthentication();
 
+    }
+
+    private static function buildRoute()
+    {
+        $request = request();
+        return (object)[
+            "module" => $request->get("module", "yamoshiandroid"),
+            "fc" => $request->get("fc", "module"),
+            "controller" => $request->get("controller", "display"),
+            "subcontroller" => $request->get("route", "index"),
+            "path" => $request->get("path", ""),
+            "paths" => $request->get("path") ? explode("/", $request->get("path", "")) : [],
+        ];
     }
 
     protected function displayRestrictedCountryPage()
@@ -54,7 +74,7 @@ abstract class AndroidBaseController extends ModuleFrontController
 
     public function displayMaintenancePage()
     {
-        if (!in_array($this->route->method, $this->exclude_maintenance))
+        if (!in_array($this->route->subcontroller, $this->exclude_maintenance))
             if ($this->maintenance == true || !(int)Configuration::get('PS_SHOP_ENABLE')) {
                 if (!in_array(Tools::getRemoteAddr(), explode(',', Configuration::get('PS_MAINTENANCE_IP')))) {
                     $this->maintenance = true;
@@ -138,36 +158,9 @@ abstract class AndroidBaseController extends ModuleFrontController
         return self::__success($elements);
     }
 
-    public static function __makeRoute()
-    {
-        $params = $_GET;
-        if (!is_array($params)) {
-            $params = [
-                'route' => "index",
-                'path' => ""
-            ];
-        }
-        if (!isset($params['route'])) {
-            $params['route'] = "index";
-        }
-        if (!isset($params['path'])) {
-            $params['path'] = "";
-        }
-        $queries = $params;
-        unset($queries['route']);
-        unset($queries['path']);
-        return (object)[
-            "method" => $params['route'] . "Route",
-            "params" => explode("/", $params['path']),
-            "queries" => $queries
-        ];
-    }
-
-
     public function postProcess()
     {
-        $payload = json_decode(Tools::file_get_contents('php://input'), true);
-        $response = $this->__route($this->route, $_GET, $payload);
+        $response = $this->__route();
         $response->printContent();
     }
 
@@ -189,18 +182,39 @@ abstract class AndroidBaseController extends ModuleFrontController
      * @param $payload
      * @return AndroidResponse|mixed
      */
-    public function __route($route, array $queryArguments, $payload)
+    public function __route()
     {
         if (!$this->__verifyAuthentication()) {
             return self::__unauthorize();
         }
-        $method = $route->method;
-        if (method_exists($this, $method)) {
+        $method = $this->route->subcontroller . "Route";
+        $route = $this->route->subcontroller;
+        if (count($this->route->paths) > 0) {
+            $route_name = $this->route->subcontroller . "/" . $this->route->path;
+        } else {
+            $route_name = $this->route->subcontroller;
+        }
+        if ($this->registersrouter->has($route)) {
+            $data = $this->registersrouter->get($route);
+            if (isset($data["clazz"]) && isset($data["method"])) {
+                $clazz = $data["clazz"];
+                $method = $data["method"];
+                if (class_exists($data["clazz"])) {
+                    $clase = new \ReflectionClass($clazz);
+                    $constructor = $clase->newInstance($this);
+                    if ($clase->hasMethod($method)) {
+                        $result = $constructor->$method(request(), $this->route->paths);
+                        if ($result instanceof AndroidResponse) {
+                            return $result;
+                        }
+                        return self::__collection($result);
+                    }
+                }
+            }
+        } elseif (method_exists($this, $method)) {
             try {
                 $result = call_user_func_array(array($this, $method), [
-                    $route->params,
-                    $queryArguments,
-                    $payload
+                    request(), $this->route->paths
                 ]);
                 if ($result instanceof AndroidResponse) {
                     return $result;
@@ -209,6 +223,7 @@ abstract class AndroidBaseController extends ModuleFrontController
             } catch (Exception $ex) {
                 return self::__client_error($ex->getMessage());
             }
+
         } else {
             /*if ($method == "indexRoute") {
                 return $this->defaultindexRoute();

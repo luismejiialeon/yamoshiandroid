@@ -10,7 +10,16 @@
     ],
     "autoload": {
         "psr-4": {
-            "App\\": "App/"
-        }
+            "App\\": "App/",
+            "AndroidHttp\\": "classes/Http/"
+        },
+        "classmap": [
+            "models",
+            "traits",
+            "classes"
+        ],
+        "files": [
+            "App/helper.php"
+        ]
     }
 }

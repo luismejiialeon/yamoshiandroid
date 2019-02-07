@@ -22,7 +22,6 @@ class AdminAndroidCategoriesController extends \App\Prestashop\PrestaShopAdminMo
         ]);
     }
 
-
     function createIndexView()
     {
         $categories_ids = $this->getCategories(true);
@@ -43,13 +42,124 @@ class AdminAndroidCategoriesController extends \App\Prestashop\PrestaShopAdminMo
         );
 
         return $this->createScriptSortable("categoriesList", "updateCategoriesPosition") .
+            $this->createCulqiConfigView() .
+            $this->createEditConfigView() .
             $this->module->display($this->module->name, 'listcategory.tpl');
+    }
+
+    function createCulqiConfigView()
+    {
+        $submit = $this->buildHelper();
+        $submit->tpl_vars["fields_value"] = [
+            "ANDROIDMANAGER_CULQI_PUBLIC_KEY" => Configuration::get('ANDROIDMANAGER_CULQI_PUBLIC_KEY'),
+            "ANDROIDMANAGER_CULQI_PRIVATE_KEY" => Configuration::get('ANDROIDMANAGER_CULQI_PRIVATE_KEY'),
+            "ANDROIDMANAGER_ALLOW_PAYMENT_CARD" => (bool)Configuration::get('ANDROIDMANAGER_ALLOW_PAYMENT_CARD'),
+        ];
+        $submit->submit_action = "addCulqiConfigSubmit";
+        return
+            $submit
+                ->generateForm(array([
+                    'form' => [
+                        'legend' => [
+                            'title' => $this->module->l('Culqi Config'),
+                            'icon' => 'icon-cogs',
+                        ],
+                        'input' => [
+                            [
+                                'label' => $this->module->l('Llave publica Culqi'),
+                                'cast' => 'floatval',
+                                'type' => 'text',
+                                'name' => 'ANDROIDMANAGER_CULQI_PUBLIC_KEY',
+                            ],
+                            [
+                                'label' => $this->module->l('Llave privada Culqi'),
+                                'cast' => 'floatval',
+                                'type' => 'text',
+                                'name' => 'ANDROIDMANAGER_CULQI_PRIVATE_KEY',
+                            ],
+                            [
+                                'label' => $this->module->l('Permitir Compras por Targeta en android'),
+                                'desc' => 'Permitir Compras por Targeta',
+                                'type' => 'switch',
+                                'is_bool' => true,
+                                'name' => 'ANDROIDMANAGER_ALLOW_PAYMENT_CARD',
+                                'values' => array(
+                                    array(
+                                        'id' => 'active_on',
+                                        'value' => 1,
+                                        'label' => $this->getTranslator()->trans('Enabled', array(), 'Admin.Global')
+                                    ),
+                                    array(
+                                        'id' => 'active_off',
+                                        'value' => 0,
+                                        'label' => $this->getTranslator()->trans('Disabled', array(), 'Admin.Global')
+                                    )
+                                ),
+                            ],
+                        ],
+                        'submit' => [
+                            'title' => $this->module->l('Save'),
+                        ],
+                    ],
+                ]));
+    }
+
+    function createEditConfigView()
+    {
+        $submit = $this->buildHelper();
+        $submit->tpl_vars["fields_value"] = [
+            "ANDROIDMANAGER_CURRENCY_DEFAULT" => Configuration::get('ANDROIDMANAGER_CURRENCY_DEFAULT'),
+            "ANDROIDMANAGER_CARGOS_CARD_PAYMENT" => Configuration::get('ANDROIDMANAGER_CARGOS_CARD_PAYMENT'),
+            "ANDROIDMANAGER_INFO_BANCARIA" => base64_decode(Configuration::get('ANDROIDMANAGER_INFO_BANCARIA'))
+        ];
+        $submit->submit_action = "addCurrencySubmit";
+        return
+            $submit
+                ->generateForm(array([
+                    'form' => [
+                        'legend' => [
+                            'title' => $this->module->l('Default Currency'),
+                            'icon' => 'icon-cogs',
+                        ],
+                        'description' => $this->module->l('Moneda por Defecto en android'),
+                        'input' => [
+                            [
+                                'title' => $this->trans('Default currency', array(), 'Admin.International.Feature'),
+                                'cast' => 'intval',
+                                'type' => 'select',
+                                'identifier' => 'id_currency',
+                                'name' => 'ANDROIDMANAGER_CURRENCY_DEFAULT',
+                                'options' => [
+                                    'query' => Currency::getCurrencies(false, true, true),
+                                    'id' => 'id_currency',
+                                    'name' => 'name'
+                                ]
+                            ], [
+                                'title' => $this->trans('Monto de recargo por pago con targeta', array(), 'Admin.Android.CartMount'),
+                                'label' => $this->module->l('Monto de recargo por pago con targeta'),
+                                'desc' => 'Ingrese el monto de recargo por pago con targeta en porcentaje. ejemplo 5 = 5%',
+                                'cast' => 'floatval',
+                                'type' => 'text',
+                                'name' => 'ANDROIDMANAGER_CARGOS_CARD_PAYMENT',
+                            ], [
+                                'title' => $this->trans('Numeros de cuentas bancarias', array(), 'Admin.Android.BankCuentas'),
+                                'label' => $this->module->l('Numeros de cuentas bancarias'),
+                                'desc' => 'Numeros de cuentas bancarias',
+                                'type' => 'textarea',
+                                'name' => 'ANDROIDMANAGER_INFO_BANCARIA',
+                            ],
+                        ],
+                        'submit' => [
+                            'title' => $this->module->l('Save'),
+                        ],
+                    ],
+                ]));
     }
 
     function createEditView()
     {
         $submit = $this->buildHelper();
-        $submit->currentIndex =$this->getAddLink();
+        $submit->currentIndex = $this->getAddLink();
         $submit->submit_action = "addCategorySubmit";
         return
             $submit
@@ -67,9 +177,9 @@ class AdminAndroidCategoriesController extends \App\Prestashop\PrestaShopAdminMo
                                 'col' => 6,
                                 'type' => 'text',
                                 'prefix' => '<i class="icon icon-key"></i>',
+                                'label' => $this->module->l('Numero de categorias'),
                                 'desc' => 'Cantidad de Categorías Seleccionadas',
                                 'name' => 'ANDROIDMANAGER_CATEGORY_COUNT',
-                                'label' => $this->module->l('Numero de categorias'),
                             ],
                             [
                                 "required" => "required",
@@ -99,6 +209,37 @@ class AdminAndroidCategoriesController extends \App\Prestashop\PrestaShopAdminMo
                         ],
                     ],
                 ]));
+    }
+
+    public function postProcess()
+    {
+        if (\Tools::isSubmit("addCurrencySubmit")) {
+
+            $ANDROIDMANAGER_CURRENCY_DEFAULT = (int)Tools::getValue('ANDROIDMANAGER_CURRENCY_DEFAULT');
+            $ANDROIDMANAGER_CARGOS_CARD = (Tools::getValue('ANDROIDMANAGER_CARGOS_CARD_PAYMENT') ?: 5);
+            $ANDROIDMANAGER_INFO_BANCARIA = Tools::getValue('ANDROIDMANAGER_INFO_BANCARIA');
+            $ANDROIDMANAGER_ALLOW_PAYMENT_CARD = Tools::getValue('ANDROIDMANAGER_ALLOW_PAYMENT_CARD');
+
+            Configuration::updateValue("ANDROIDMANAGER_ALLOW_PAYMENT_CARD", $ANDROIDMANAGER_ALLOW_PAYMENT_CARD);
+            Configuration::updateValue("ANDROIDMANAGER_CURRENCY_DEFAULT", $ANDROIDMANAGER_CURRENCY_DEFAULT);
+            Configuration::updateValue("ANDROIDMANAGER_CARGOS_CARD_PAYMENT", $ANDROIDMANAGER_CARGOS_CARD);
+            Configuration::updateValue("ANDROIDMANAGER_INFO_BANCARIA", base64_encode($ANDROIDMANAGER_INFO_BANCARIA ?: ""));
+            $this->setSessionSuccess();
+        }
+        if (\Tools::isSubmit("addCulqiConfigSubmit")) {
+
+            $ANDROIDMANAGER_ALLOW_PAYMENT_CARD = (bool)Tools::getValue('ANDROIDMANAGER_ALLOW_PAYMENT_CARD');
+            $ANDROIDMANAGER_CULQI_PRIVATE_KEY = Tools::getValue('ANDROIDMANAGER_CULQI_PRIVATE_KEY');
+            $ANDROIDMANAGER_CULQI_PUBLIC_KEY = Tools::getValue('ANDROIDMANAGER_CULQI_PUBLIC_KEY');
+
+            Configuration::updateValue("ANDROIDMANAGER_ALLOW_PAYMENT_CARD", $ANDROIDMANAGER_ALLOW_PAYMENT_CARD);
+            Configuration::updateValue("ANDROIDMANAGER_CULQI_PRIVATE_KEY", $ANDROIDMANAGER_CULQI_PRIVATE_KEY);
+            Configuration::updateValue("ANDROIDMANAGER_CULQI_PUBLIC_KEY", $ANDROIDMANAGER_CULQI_PUBLIC_KEY);
+
+            $this->setSessionSuccess();
+        }
+        return parent::postProcess();
+
     }
 
     function onEditPostProccess()

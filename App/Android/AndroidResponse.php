@@ -11,6 +11,8 @@
  */
 
 namespace App\Android;
+use App\Contracts\Support\Arrayable;
+
 class AndroidResponse
 {
     private $payload;
@@ -60,10 +62,13 @@ class AndroidResponse
     }
 
     /**
-     * @return string
+     * @return mixed
      */
     public function getPayload()
     {
+        if($this->payload instanceof Arrayable){
+            return $this->payload->toArray();
+        }
         return $this->payload;
     }
 
@@ -244,10 +249,10 @@ class AndroidResponse
         foreach ($this->header as $h) {
             header($h);
         }
-        if (is_string($this->payload)) {
-            exit($this->payload);
+        if (is_string($this->getPayload())) {
+            exit($this->getPayload());
         } else {
-            exit(json_encode($this->payload));
+            exit(json_encode($this->getPayload()));
         }
     }
 

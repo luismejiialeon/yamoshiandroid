@@ -36,7 +36,7 @@ use App\Android\AndroidSchema;
 use App\Database\Schema\Blueprint;
 
 include_once(_PS_MODULE_DIR_ . 'yamoshiandroid/vendor/autoload.php');
-include_once(_PS_MODULE_DIR_ . 'yamoshiandroid/vendor/customautoload.php');
+//include_once(_PS_MODULE_DIR_ . 'yamoshiandroid/vendor/customautoload.php');
 
 class YamoshiAndroid extends AndroidBaseModule /*implements WidgetInterface*/
 {
@@ -48,7 +48,7 @@ class YamoshiAndroid extends AndroidBaseModule /*implements WidgetInterface*/
             'visible' => true,
             'parent_class_name' => 'IMPROVE',
         ), array(
-            'name' => 'Seleccionar Categorías', // One name for all langs
+            'name' => 'Configurar App Android', // One name for all langs
             'class_name' => 'AdminAndroidCategories',
             'visible' => true,
             'parent_class_name' => 'AdminYamoshiandroid',
@@ -60,7 +60,7 @@ class YamoshiAndroid extends AndroidBaseModule /*implements WidgetInterface*/
         ));
 
     protected $register_hooks = [
-       // "displayHeader",
+        // "displayHeader",
         "moduleRoutes",
         "actionShopDataDuplication"
     ];
@@ -70,6 +70,12 @@ class YamoshiAndroid extends AndroidBaseModule /*implements WidgetInterface*/
         "ANDROIDSLIDER_SPEED" => 5000,
         "ANDROIDSLIDER_PAUSE_ON_HOVER" => 1,
         "ANDROIDSLIDER_WRAP" => 1,
+        "ANDROIDMANAGER_CURRENCY_DEFAULT" => 1,
+        "ANDROIDMANAGER_CARGOS_CARD_PAYMENT" => 5,
+        "ANDROIDMANAGER_INFO_BANCARIA" => "",
+        "ANDROIDMANAGER_ALLOW_PAYMENT_CARD" => false,
+        "ANDROIDMANAGER_CULQI_PRIVATE_KEY" => "",
+        "ANDROIDMANAGER_CULQI_PUBLIC_KEY" => "",
     ];
 
 
@@ -87,13 +93,27 @@ class YamoshiAndroid extends AndroidBaseModule /*implements WidgetInterface*/
         $this->bootstrap = true;
 
         parent::__construct();
-
+        if ($this
+                ->context
+                ->currency != null) {
+            $this->register_configuration_keys["ANDROIDMANAGER_CURRENCY_DEFAULT"] =
+                $this
+                    ->context
+                    ->currency
+                    ->id ?: 1;
+        }
         $this->displayName = $this->getTranslator()->trans('Android Manager', array(), 'Modules.AndroidSlide.Admin');
         $this->description = $this->getTranslator()->trans('Administre su aplicacion android.', array(), 'Modules.AndroidSlide.Admin');
         $this->ps_versions_compliancy = array('min' => '1.7.1.0', 'max' => _PS_VERSION_);
 
 
         $this->templateFile = 'module:yamoshiandroid/views/templates/hook/sliders.tpl';
+
+        $ANDROIDMANAGER_CARGOS_CARD = Configuration::hasKey("ANDROIDMANAGER_CARGOS_CARD_PAYMENT");
+        if (!$ANDROIDMANAGER_CARGOS_CARD) {
+            Configuration::updateValue("ANDROIDMANAGER_CARGOS_CARD_PAYMENT", 5);
+        }
+
     }
 
     /**
@@ -167,14 +187,14 @@ class YamoshiAndroid extends AndroidBaseModule /*implements WidgetInterface*/
                 $blueprint->unsignedInteger("position")->default('0');
                 $blueprint->boolean("active")->default('1');
             })
-            && AndroidSchema::deletePrimaryKeyAndAdd('yamoshiandroid_categories',['id_yamoshiandroid_categories', 'id_category', 'id_shop'])
+            && AndroidSchema::deletePrimaryKeyAndAdd('yamoshiandroid_categories', ['id_yamoshiandroid_categories', 'id_category', 'id_shop'])
 
             && AndroidSchema::create("androidslider", function (Blueprint $blueprint) {
                 //$blueprint->dropIfExists();
                 $blueprint->increments("id_androidslider_slides");
                 $blueprint->unsignedInteger("id_shop")->nullable();
             })
-            && AndroidSchema::deletePrimaryKeyAndAdd('androidslider',['id_androidslider_slides', 'id_shop'])
+            && AndroidSchema::deletePrimaryKeyAndAdd('androidslider', ['id_androidslider_slides', 'id_shop'])
             && AndroidSchema::create("androidslider_slides", function (Blueprint $blueprint) {
                 //$blueprint->dropIfExists();
                 $blueprint->increments("id_androidslider_slides");
@@ -192,7 +212,7 @@ class YamoshiAndroid extends AndroidBaseModule /*implements WidgetInterface*/
                 $blueprint->string("image", 255);
             })
             &&
-            AndroidSchema::deletePrimaryKeyAndAdd('androidslider_slides_lang',['id_androidslider_slides', 'id_lang']);
+            AndroidSchema::deletePrimaryKeyAndAdd('androidslider_slides_lang', ['id_androidslider_slides', 'id_lang']);
 
     }
 
@@ -206,47 +226,48 @@ class YamoshiAndroid extends AndroidBaseModule /*implements WidgetInterface*/
             && AndroidSchema::deleteTable("androidslider_slides")
             && AndroidSchema::deleteTable("androidslider_slides_lang");
     }
-/*
-    public function hookdisplayHeader($params)
-    {
-        $this->context->controller->registerStylesheet('modules-androidslider', 'modules/' . $this->name . '/css/androidslider.css', ['media' => 'all', 'priority' => 150]);
-        $this->context->controller->registerJavascript('modules-responsiveslides', 'modules/' . $this->name . '/js/responsiveslides.min.js', ['position' => 'bottom', 'priority' => 150]);
-        $this->context->controller->registerJavascript('modules-androidslider', 'modules/' . $this->name . '/js/androidslider.js', ['position' => 'bottom', 'priority' => 150]);
-    }
 
-    public function renderWidget($hookName = null, array $configuration = [])
-    {
-        if (!$this->isCached($this->templateFile, $this->getCacheId())) {
-            $this->smarty->assign($this->getWidgetVariables($hookName, $configuration));
+    /*
+        public function hookdisplayHeader($params)
+        {
+            $this->context->controller->registerStylesheet('modules-androidslider', 'modules/' . $this->name . '/css/androidslider.css', ['media' => 'all', 'priority' => 150]);
+            $this->context->controller->registerJavascript('modules-responsiveslides', 'modules/' . $this->name . '/js/responsiveslides.min.js', ['position' => 'bottom', 'priority' => 150]);
+            $this->context->controller->registerJavascript('modules-androidslider', 'modules/' . $this->name . '/js/androidslider.js', ['position' => 'bottom', 'priority' => 150]);
         }
 
-        return $this->fetch($this->templateFile, $this->getCacheId());
-    }
+        public function renderWidget($hookName = null, array $configuration = [])
+        {
+            if (!$this->isCached($this->templateFile, $this->getCacheId())) {
+                $this->smarty->assign($this->getWidgetVariables($hookName, $configuration));
+            }
 
-    public function getWidgetVariables($hookName = null, array $configuration = [])
-    {
-        $slides = $this->getSlides(true);
-        if (is_array($slides)) {
-            foreach ($slides as &$slide) {
-                $slide['sizes'] = @getimagesize((dirname(__FILE__) . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . $slide['image']));
-                if (isset($slide['sizes'][3]) && $slide['sizes'][3]) {
-                    $slide['size'] = $slide['sizes'][3];
+            return $this->fetch($this->templateFile, $this->getCacheId());
+        }
+
+        public function getWidgetVariables($hookName = null, array $configuration = [])
+        {
+            $slides = $this->getSlides(true);
+            if (is_array($slides)) {
+                foreach ($slides as &$slide) {
+                    $slide['sizes'] = @getimagesize((dirname(__FILE__) . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . $slide['image']));
+                    if (isset($slide['sizes'][3]) && $slide['sizes'][3]) {
+                        $slide['size'] = $slide['sizes'][3];
+                    }
                 }
             }
+
+            $config = $this->getConfigFieldsValues();
+
+            return [
+                'androidslider' => [
+                    'speed' => $config['ANDROIDSLIDER_SPEED'],
+                    'pause' => $config['ANDROIDSLIDER_PAUSE_ON_HOVER'] ? 'hover' : '',
+                    'wrap' => $config['ANDROIDSLIDER_WRAP'] ? 'true' : 'false',
+                    'slides' => $slides,
+                ],
+            ];
         }
-
-        $config = $this->getConfigFieldsValues();
-
-        return [
-            'androidslider' => [
-                'speed' => $config['ANDROIDSLIDER_SPEED'],
-                'pause' => $config['ANDROIDSLIDER_PAUSE_ON_HOVER'] ? 'hover' : '',
-                'wrap' => $config['ANDROIDSLIDER_WRAP'] ? 'true' : 'false',
-                'slides' => $slides,
-            ],
-        ];
-    }
-*/
+    */
 
 
     public function clearCache()
@@ -259,7 +280,6 @@ class YamoshiAndroid extends AndroidBaseModule /*implements WidgetInterface*/
         $this->DBActionShopDataDuplication($params);
         $this->clearCache();
     }
-
 
 
     public function getConfigFieldsValues()

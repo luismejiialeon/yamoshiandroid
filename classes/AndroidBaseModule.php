@@ -7,7 +7,7 @@
  * Date: 10/01/2019
  * Time: 11:56
  */
-abstract class AndroidBaseModule extends Module
+abstract class AndroidBaseModule extends PaymentModule
 {
     protected $register_hooks = [];
     protected $register_configuration_keys = [];

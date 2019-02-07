@@ -7,4 +7,5 @@ $baseDir = dirname($vendorDir);
 
 return array(
     'App\\' => array($baseDir . '/App'),
+    'AndroidHttp\\' => array($baseDir . '/classes/Http'),
 );
